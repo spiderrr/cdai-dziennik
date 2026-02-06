@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator CDAI</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: Arial, sans-serif; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Kalkulator CDAI</h1>
+    <form id="calculator">
+        <label for="symptoms">Objawy (w skali od 0 do 3):</label><br>
+        <input type="number" id="symptoms" name="symptoms" min="0" max="3"><br>
+        <label for="labs">Wyniki badań (w skali od 0 do 3):</label><br>
+        <input type="number" id="labs" name="labs" min="0" max="3"><br>
+        <label for="treatment">Leczenie (0 - brak, 1 - leczenie łagodne, 2 - leczenie umiarkowane, 3 - leczenie intensywne):</label><br>
+        <input type="number" id="treatment" name="treatment" min="0" max="3"><br><br>
+        <button type="button" onclick="calculateCDAI()">Oblicz CDAI</button>
+    </form>
+    <h2 id="result"></h2>
+    <script>
+        function calculateCDAI() {
+            const symptoms = parseInt(document.getElementById('symptoms').value) || 0;
+            const labs = parseInt(document.getElementById('labs').value) || 0;
+            const treatment = parseInt(document.getElementById('treatment').value) || 0;
+            const cdaIndex = symptoms + labs + treatment;
+            document.getElementById('result').innerText = `CDAI: ${cdaIndex}`;
+        }
+    </script>
+</body>
+</html>
