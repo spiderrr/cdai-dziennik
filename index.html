@@ -1,35 +1,101 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator CDAI</title>
-    <link rel="manifest" href="manifest.json">
-    <style>
-        body { font-family: Arial, sans-serif; }
-        h1 { color: #333; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CDAI – Dziennik (PWA)</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 10px; }
+    h1 { margin-bottom: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background: #f0f0f0; }
+    input, select { width: 100%; padding: 6px; }
+    button { padding: 10px 16px; font-size: 16px; margin: 5px 0; }
+    .result { font-size: 1.3em; font-weight: bold; margin-top: 10px; }
+  </style>
 </head>
 <body>
-    <h1>Kalkulator CDAI</h1>
-    <form id="calculator">
-        <label for="symptoms">Objawy (w skali od 0 do 3):</label><br>
-        <input type="number" id="symptoms" name="symptoms" min="0" max="3"><br>
-        <label for="labs">Wyniki badań (w skali od 0 do 3):</label><br>
-        <input type="number" id="labs" name="labs" min="0" max="3"><br>
-        <label for="treatment">Leczenie (0 - brak, 1 - leczenie łagodne, 2 - leczenie umiarkowane, 3 - leczenie intensywne):</label><br>
-        <input type="number" id="treatment" name="treatment" min="0" max="3"><br><br>
-        <button type="button" onclick="calculateCDAI()">Oblicz CDAI</button>
-    </form>
-    <h2 id="result"></h2>
-    <script>
-        function calculateCDAI() {
-            const symptoms = parseInt(document.getElementById('symptoms').value) || 0;
-            const labs = parseInt(document.getElementById('labs').value) || 0;
-            const treatment = parseInt(document.getElementById('treatment').value) || 0;
-            const cdaIndex = symptoms + labs + treatment;
-            document.getElementById('result').innerText = `CDAI: ${cdaIndex}`;
-        }
-    </script>
+
+<h1>Dziennik CDAI</h1>
+<p>Codziennie wpisuj objawy. Dane są zapisywane lokalnie w telefonie.</p>
+
+<h3>Dane dzienne (ostatnie 7 dni)</h3>
+<table>
+  <tr>
+    <th>Dzień</th>
+    <th>Luźne stolce</th>
+    <th>Ból brzucha (0–3)</th>
+    <th>Samopoczucie (0–4)</th>
+  </tr>
+  <tbody id="days"></tbody>
+</table>
+
+<h3>Dane stałe</h3>
+<table>
+<tr><td>Powikłania (liczba)</td><td><input type="number" id="comp"></td></tr>
+<tr><td>Leki przeciwbiegunkowe (0/1)</td><td><input type="number" id="med" min="0" max="1"></td></tr>
+<tr><td>Masa/brzuch (0,2,5)</td><td><input type="number" id="mass" min="0" max="5"></td></tr>
+<tr><td>Hematokryt (%)</td><td><input type="number" id="hct"></td></tr>
+<tr><td>Płeć</td><td><select id="sex"><option value="47">Mężczyzna</option><option value="42">Kobieta</option></select></td></tr>
+<tr><td>Masa aktualna (kg)</td><td><input type="number" id="w_now"></td></tr>
+<tr><td>Masa należna (kg)</td><td><input type="number" id="w_norm"></td></tr>
+</table>
+
+<button onclick="calc()">Oblicz CDAI</button>
+<button onclick="makePDF()">Eksport PDF</button>
+
+<div class="result" id="out"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const daysEl = document.getElementById('days');
+
+function loadDays(){
+  daysEl.innerHTML='';
+  let data = JSON.parse(localStorage.getItem('days')||'[]');
+  for(let i=0;i<7;i++){
+    let d = data[i]||{stool:0,pain:0,feel:0};
+    daysEl.innerHTML += `<tr>
+      <td>Dzień ${i+1}</td>
+      <td><input type='number' value='${d.stool}' onchange='save(${i},"stool",this.value)'></td>
+      <td><input type='number' value='${d.pain}' min='0' max='3' onchange='save(${i},"pain",this.value)'></td>
+      <td><input type='number' value='${d.feel}' min='0' max='4' onchange='save(${i},"feel",this.value)'></td>
+    </tr>`;
+  }
+}
+
+function save(i,k,v){
+  let data = JSON.parse(localStorage.getItem('days')||'[]');
+  data[i] = data[i]||{};
+  data[i][k]=Number(v);
+  localStorage.setItem('days',JSON.stringify(data));
+}
+
+function sum(k){ let s=0; let d=JSON.parse(localStorage.getItem('days')||'[]'); d.forEach(x=>s+=Number(x?.[k]||0)); return s; }
+
+function calc(){
+  let total = sum('stool')*2 + sum('pain')*5 + sum('feel')*7
+    + Number(comp.value||0)*20 + Number(med.value||0)*30
+    + Number(mass.value||0)*10
+    + (Number(sex.value)-Number(hct.value||0))*6
+    + (1-(Number(w_now.value||0)/Number(w_norm.value||1)))*100;
+
+  total=Math.round(total);
+  let status = total<150?'Remisja':total<220?'Łagodna':total<450?'Umiarkowana':'Ciężka';
+  out.innerText=`CDAI = ${total} → ${status}`;
+}
+
+function makePDF(){
+  const { jsPDF } = window.jspdf;
+  let pdf = new jsPDF();
+  pdf.text('Dziennik CDAI – Choroba Crohna',10,10);
+  pdf.text(out.innerText,10,20);
+  pdf.save('CDAI.pdf');
+}
+
+loadDays();
+</script>
 </body>
 </html>
