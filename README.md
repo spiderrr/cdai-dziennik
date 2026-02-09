@@ -13,3 +13,4 @@
 - Once added, you can tap the app icon on your home screen to launch the PWA.
 - The PWA will work offline after the initial load, depending on its service worker setup.
 - You can also configure settings for notifications and updates within the app itself if supported.
+- https://spiderrr.github.io/cdai-dziennik/
